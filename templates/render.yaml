@@ -1,7 +1,7 @@
 services:
   - type: web
     name: auto-clip-ai
-    env: python
+    Environment: Docker
     buildCommand: "pip install -r requirements.txt"
     startCommand: "python app.py"
     plan: free
