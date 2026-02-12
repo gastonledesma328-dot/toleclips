@@ -34,81 +34,85 @@ def process_video():
 
     # 1️⃣ Convertir a vertical
     subprocess.run([
-        "ffmpeg","-y",
+        "ffmpeg", "-y",
         "-i", input_path,
-        "-vf","crop=in_h*9/16:in_h,scale=720:1280",
-        "-preset","ultrafast",
+        "-vf", "crop=in_h*9/16:in_h,scale=720:1280",
+        "-preset", "ultrafast",
         vertical_path
     ])
 
     # 2️⃣ Extraer audio
     subprocess.run([
-        "ffmpeg","-y",
+        "ffmpeg", "-y",
         "-i", vertical_path,
         "-vn",
-        "-ac","1",
-        "-ar","16000",
+        "-ac", "1",
+        "-ar", "16000",
         audio_path
     ])
 
-    # 3️⃣ Subir audio a AssemblyAI
     headers = {
         "authorization": ASSEMBLY_API_KEY
     }
 
+    # 3️⃣ Subir audio
     upload_response = requests.post(
         "https://api.assemblyai.com/v2/upload",
         headers=headers,
         data=open(audio_path, "rb")
     )
 
-    audio_url = upload_response.json()["upload_url"]
+    upload_data = upload_response.json()
+    if "upload_url" not in upload_data:
+        return f"Upload error: {upload_data}"
 
-   transcript_response = requests.post(
-    "https://api.assemblyai.com/v2/transcript",
-    json={"audio_url": audio_url},
-    headers=headers
-)
+    audio_url = upload_data["upload_url"]
 
-transcript_data = transcript_response.json()
+    # 4️⃣ Crear transcripción
+    transcript_response = requests.post(
+        "https://api.assemblyai.com/v2/transcript",
+        json={"audio_url": audio_url},
+        headers=headers
+    )
 
-if "id" not in transcript_data:
-    print("ERROR TRANSCRIPT:", transcript_data)
-    return f"Error AssemblyAI: {transcript_data}"
+    transcript_data = transcript_response.json()
+    if "id" not in transcript_data:
+        return f"Transcript error: {transcript_data}"
 
-transcript_id = transcript_data["id"]
+    transcript_id = transcript_data["id"]
 
-
-    # 4️⃣ Esperar resultado
+    # 5️⃣ Esperar resultado
     while True:
         polling = requests.get(
             f"https://api.assemblyai.com/v2/transcript/{transcript_id}",
             headers=headers
         )
-        status = polling.json()["status"]
+
+        polling_data = polling.json()
+        status = polling_data["status"]
 
         if status == "completed":
             break
         elif status == "error":
-            return "Error en transcripción"
+            return f"Transcription failed: {polling_data}"
 
         time.sleep(3)
 
-    # 5️⃣ Obtener subtítulos en SRT
+    # 6️⃣ Obtener SRT
     srt_response = requests.get(
         f"https://api.assemblyai.com/v2/transcript/{transcript_id}/srt",
         headers=headers
     )
 
-    with open(srt_path,"w",encoding="utf-8") as f:
+    with open(srt_path, "w", encoding="utf-8") as f:
         f.write(srt_response.text)
 
-    # 6️⃣ Quemar subtítulos
+    # 7️⃣ Quemar subtítulos
     subprocess.run([
-        "ffmpeg","-y",
+        "ffmpeg", "-y",
         "-i", vertical_path,
-        "-vf",f"subtitles={srt_path}:force_style='Fontsize=24'",
-        "-preset","ultrafast",
+        "-vf", f"subtitles={srt_path}:force_style='Fontsize=24'",
+        "-preset", "ultrafast",
         final_path
     ])
 
