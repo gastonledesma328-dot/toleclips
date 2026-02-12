@@ -1,5 +1,0 @@
-flask
-faster-whisper
-opencv-python-headless
-mediapipe
-gunicorn
