@@ -1,7 +1,7 @@
 import os
 import uuid
 import subprocess
-from flask import Flask, render_template, request, send_file
+from flask import Flask, render_template, request, redirect, url_for, send_from_directory
 from faster_whisper import WhisperModel
 
 app = Flask(__name__)
@@ -12,11 +12,7 @@ OUTPUT_FOLDER = "/tmp/outputs"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
-# Modelo optimizado para Render Free
-model = WhisperModel(
-    "tiny",
-    compute_type="int8"
-)
+model = WhisperModel("tiny", compute_type="int8")
 
 @app.route("/")
 def index():
@@ -25,7 +21,6 @@ def index():
 @app.route("/process", methods=["POST"])
 def process_video():
     file = request.files["video"]
-    preset = request.form.get("preset")
 
     unique_id = str(uuid.uuid4())
 
@@ -37,7 +32,7 @@ def process_video():
 
     file.save(input_path)
 
-    # 1️⃣ Convertir a vertical 9:16
+    # Vertical
     subprocess.run([
         "ffmpeg","-y",
         "-i", input_path,
@@ -46,7 +41,7 @@ def process_video():
         vertical_path
     ])
 
-    # 2️⃣ Extraer audio liviano
+    # Audio
     subprocess.run([
         "ffmpeg","-y",
         "-i", vertical_path,
@@ -56,7 +51,7 @@ def process_video():
         audio_path
     ])
 
-    # 3️⃣ Generar subtítulos
+    # Subtitles
     segments, _ = model.transcribe(audio_path)
 
     with open(srt_path,"w",encoding="utf-8") as f:
@@ -65,7 +60,7 @@ def process_video():
             f.write(f"{format_time(seg.start)} --> {format_time(seg.end)}\n")
             f.write(f"{seg.text.strip()}\n\n")
 
-    # 4️⃣ Quemar subtítulos al video vertical
+    # Burn subtitles
     subprocess.run([
         "ffmpeg","-y",
         "-i", vertical_path,
@@ -74,7 +69,29 @@ def process_video():
         final_path
     ])
 
-    return send_file(final_path, as_attachment=True)
+    return redirect(url_for("result", video_id=unique_id))
+
+
+@app.route("/result/<video_id>")
+def result(video_id):
+    return render_template("result.html", video_id=video_id)
+
+
+@app.route("/download/<video_id>")
+def download(video_id):
+    return send_from_directory(
+        OUTPUT_FOLDER,
+        f"{video_id}_final.mp4",
+        as_attachment=True
+    )
+
+
+@app.route("/video/<video_id>")
+def serve_video(video_id):
+    return send_from_directory(
+        OUTPUT_FOLDER,
+        f"{video_id}_final.mp4"
+    )
 
 
 def format_time(seconds):
