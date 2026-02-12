@@ -2,33 +2,21 @@
 <html>
 <head>
     <title>Auto Clip AI</title>
-    <style>
-        body {
-            background: #0f172a;
-            color: white;
-            font-family: Arial;
-            text-align: center;
-            padding-top: 100px;
-        }
-        input, button {
-            padding: 10px;
-            margin: 10px;
-        }
-        button {
-            background: #6366f1;
-            border: none;
-            color: white;
-            cursor: pointer;
-        }
-    </style>
 </head>
-<body>
+<body style="background:#0f172a;color:white;text-align:center;padding-top:80px;">
     <h1>🎬 Auto Clip AI</h1>
-    <p>Subí tu clip y lo convertimos en vertical con subtítulos automáticos</p>
 
     <form action="/process" method="post" enctype="multipart/form-data">
-        <input type="file" name="video" required>
-        <br>
+        <input type="file" name="video" required><br><br>
+
+        <select name="preset">
+            <option value="bottom_right">Abajo Derecha</option>
+            <option value="bottom_left">Abajo Izquierda</option>
+            <option value="top_right">Arriba Derecha</option>
+            <option value="top_left">Arriba Izquierda</option>
+            <option value="center">Centro</option>
+        </select><br><br>
+
         <button type="submit">Procesar Video</button>
     </form>
 </body>
