@@ -64,13 +64,20 @@ def process_video():
 
     audio_url = upload_response.json()["upload_url"]
 
-    transcript_response = requests.post(
-        "https://api.assemblyai.com/v2/transcript",
-        json={"audio_url": audio_url, "auto_chapters": False},
-        headers=headers
-    )
+   transcript_response = requests.post(
+    "https://api.assemblyai.com/v2/transcript",
+    json={"audio_url": audio_url},
+    headers=headers
+)
 
-    transcript_id = transcript_response.json()["id"]
+transcript_data = transcript_response.json()
+
+if "id" not in transcript_data:
+    print("ERROR TRANSCRIPT:", transcript_data)
+    return f"Error AssemblyAI: {transcript_data}"
+
+transcript_id = transcript_data["id"]
+
 
     # 4️⃣ Esperar resultado
     while True:
